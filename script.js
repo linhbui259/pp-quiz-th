@@ -11,8 +11,6 @@ let markersLayer = L.layerGroup(); // Layer-Gruppe für unsere Marker
 const questionDisplay = document.getElementById('question-display');
 const questionImage = document.getElementById('question-image');
 const questionTextContent = document.getElementById('question-text-content');
-const scoreDisplay = document.getElementById('score');
-const nextButton = document.getElementById('next-btn');
 
 // Benutzerdefinierte Icons für Marker (optional, aber verbessert das Feedback)
 const defaultIcon = L.icon({
@@ -72,7 +70,7 @@ async function loadAndDisplayMarkers() {
         resetQuiz(); // Startet das Quiz nach dem Laden der Daten
     } catch (error) {
         console.error("Fehler beim Laden der GeoJSON-Daten:", error);
-        questionDisplay.textContent = "Fehler beim Laden der Kartendaten.";
+        questionTextContent.textContent = "Fehler beim Laden der Kartendaten."; 
     }
 }
 
@@ -91,8 +89,8 @@ function createMarkers() {
 
 // Wird aufgerufen, wenn auf einen Marker geklickt wird
 function onMarkerClick(e) {
-    if (!currentQuestionData || !currentQuestionData.properties) { // Zusätzliche Prüfung für properties
-        console.warn("onMarkerClick aufgerufen, aber currentQuestionData ist nicht korrekt gesetzt.");
+    if (!currentQuestionData || !currentQuestionData.properties) { 
+        console.warn("onMarkerClick aufgerufen, aber currentQuestionData ist nicht korrekt gesetzt oder nächste Frage wird bereits geladen.");
         return; 
     }
 
@@ -100,13 +98,11 @@ function onMarkerClick(e) {
     const clickedFeatureName = clickedMarker.featureData.name;
 
     disableMapClicks(true); 
-    nextButton.disabled = false;
-
-    const correctFeatureName = currentQuestionData.properties.name; // Korrekter Zugriff
+    
+    const correctFeatureName = currentQuestionData.properties.name; 
 
     if (clickedFeatureName === correctFeatureName) {
         score++;
-        scoreDisplay.textContent = `Punkte: ${score}`;
         questionTextContent.textContent = `Richtig! Das ist ${correctFeatureName}.`;
         clickedMarker.setIcon(correctIcon); 
     } else {
@@ -119,7 +115,19 @@ function onMarkerClick(e) {
             }
         });
     }
-    currentQuestionData = null; // Verhindert doppeltes Antworten
+    
+    setTimeout(proceedToNextQuestion, 1500);
+}
+
+// Geht zur nächsten Frage oder beendet das Quiz
+function proceedToNextQuestion() {
+    currentQuestionData = null;
+    if (featuresToAsk.length === 0) {
+        questionTextContent.textContent = `Quiz beendet! Endpunktzahl: ${score} von ${allFeaturesData.length}. Zum Neustarten Seite neu laden.`;
+        questionImage.style.display = 'none';
+    } else {
+        generateQuestion();
+    }
 }
 
 // (De-)Aktiviert Klick-Events auf den Markern
@@ -128,13 +136,11 @@ function disableMapClicks(disabled) {
         if (disabled) {
             marker.off('click', onMarkerClick);
         } else {
-            // Stelle sicher, dass der Event-Handler nicht mehrfach hinzugefügt wird
-            marker.off('click', onMarkerClick); // Erst entfernen
-            marker.on('click', onMarkerClick);  // Dann hinzufügen
+            marker.off('click', onMarkerClick); 
+            marker.on('click', onMarkerClick);  
         }
     });
 }
-
 
 // Mischt ein Array (Fisher-Yates Shuffle)
 function shuffleArray(array) {
@@ -146,22 +152,11 @@ function shuffleArray(array) {
 
 // Generiert eine neue Frage
 function generateQuestion() {
-    resetMarkerStyles(); // Setzt Icons aller Marker zurück
-    disableMapClicks(false); // Aktiviert Klicks auf Marker
+    resetMarkerStyles(); 
+    disableMapClicks(false); 
 
-    if (featuresToAsk.length === 0) {
-        questionTextContent.textContent = `Quiz beendet! Endpunktzahl: ${score} von ${allFeaturesData.length}.`;
-        questionImage.style.display = 'none';
-        nextButton.textContent = "Neu starten";
-        nextButton.disabled = false; // Button für Neustart aktivieren
-        currentQuestionData = null;
-        return;
-    }
-
-    // Nimm das nächste Element aus dem gemischten Array
     currentQuestionData = featuresToAsk.pop(); 
     
-    // Korrekter Zugriff über das 'properties'-Objekt
     if (currentQuestionData && currentQuestionData.properties) {
         questionTextContent.textContent = `Klicke auf: ${currentQuestionData.properties.name}`;
         if (currentQuestionData.properties.imageUrl) {
@@ -169,51 +164,35 @@ function generateQuestion() {
             questionImage.alt = `Wappen von ${currentQuestionData.properties.name}`;
             questionImage.style.display = 'block';
         } else {
-            questionImage.style.display = 'none'; // Bild ausblenden, wenn keine URL vorhanden
+            questionImage.style.display = 'none'; 
         }
     } else {
         console.error("Fehler: Ungültige Fragendaten oder fehlende Properties", currentQuestionData);
         questionTextContent.textContent = "Fehler beim Laden der Frage.";
         questionImage.style.display = 'none';
-        currentQuestionData = null; // Verhindern, dass mit ungültigen Daten weitergemacht wird
+        currentQuestionData = null; 
     }
-    
-    nextButton.textContent = "Nächste Frage";
-    nextButton.disabled = true; // Deaktiviere "Nächste Frage" bis eine Antwort gegeben wurde
 }
 
 // Setzt die Icons aller Marker auf den Standard zurück
 function resetMarkerStyles() {
     markersLayer.eachLayer(marker => {
         marker.setIcon(defaultIcon);
-        marker.closePopup(); // Schließt eventuelle Popups
+        marker.closePopup(); 
     });
 }
 
 // Startet das Quiz oder eine neue Runde
 function resetQuiz() {
     score = 0;
-    scoreDisplay.textContent = `Punkte: ${score}`;
     
-    // Kopiere und mische die Features für die neue Runde
     featuresToAsk = [...allFeaturesData]; 
     shuffleArray(featuresToAsk);
 
-    createMarkers(); // Erstellt die Marker basierend auf allFeaturesData
+    createMarkers(); 
     
     generateQuestion();
-    nextButton.textContent = "Nächste Frage";
-    nextButton.disabled = true; 
 }
-
-// Event-Listener für den "Nächste Frage"/"Neu starten"-Button
-nextButton.addEventListener('click', () => {
-    if (featuresToAsk.length === 0 && !currentQuestionData) { // Wenn das Quiz beendet ist
-        resetQuiz();
-    } else {
-        generateQuestion();
-    }
-});
 
 // Initialisiert die Anwendung, wenn das DOM geladen ist
 document.addEventListener('DOMContentLoaded', initMap);
