@@ -11,19 +11,19 @@ let markersLayer = L.layerGroup(); // Layer-Gruppe für unsere Marker
 const questionDisplay = document.getElementById('question-display');
 const questionImage = document.getElementById('question-image');
 const questionTextContent = document.getElementById('question-text-content');
+const nextButton = document.getElementById('next-btn'); // Button-Variable wiederhergestellt
 
 // Benutzerdefinierte Icons für Marker (optional, aber verbessert das Feedback)
 const defaultIcon = L.icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    // shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', // Oft von Leaflet automatisch gehandhabt
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', // Sicherstellen, dass die shadowUrl hier ist
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
     shadowSize: [41, 41]
 });
 
-// Temporär auskommentiert für Testzwecke
-/*
+// Temporär auskommentiert für Testzwecke -> Jetzt wieder aktivieren
 const correctIcon = L.icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -41,11 +41,6 @@ const incorrectIcon = L.icon({
     popupAnchor: [1, -34],
     shadowSize: [41, 41]
 });
-*/
-
-// Verwende defaultIcon für alle Fälle zu Testzwecken
-const correctIcon = defaultIcon; 
-const incorrectIcon = defaultIcon;
 
 // Initialisiert die Karte
 function initMap() {
@@ -94,6 +89,9 @@ function onMarkerClick(e) {
         return; 
     }
 
+    nextButton.style.display = 'none'; // Button sofort verstecken/deaktivieren
+    nextButton.disabled = true;
+
     const clickedMarker = e.target;
     const clickedFeatureName = clickedMarker.featureData.name;
 
@@ -116,18 +114,18 @@ function onMarkerClick(e) {
         });
     }
     
-    setTimeout(proceedToNextQuestion, 1500);
-}
-
-// Geht zur nächsten Frage oder beendet das Quiz
-function proceedToNextQuestion() {
-    currentQuestionData = null;
-    if (featuresToAsk.length === 0) {
-        questionTextContent.textContent = `Quiz beendet! Endpunktzahl: ${score} von ${allFeaturesData.length}. Zum Neustarten Seite neu laden.`;
-        questionImage.style.display = 'none';
-    } else {
-        generateQuestion();
-    }
+    setTimeout(() => {
+        nextButton.style.display = 'block';
+        nextButton.disabled = false;
+        if (featuresToAsk.length === 0) { // Dies war die letzte Frage
+            questionTextContent.textContent += ` | Endpunktzahl: ${score} von ${allFeaturesData.length}.`;
+            questionImage.style.display = 'none';
+            nextButton.textContent = "Neu starten";
+        } else {
+            nextButton.textContent = "Nächste Frage";
+        }
+        currentQuestionData = null; // Signalisiert, dass die Antwortverarbeitung abgeschlossen ist
+    }, 5000);
 }
 
 // (De-)Aktiviert Klick-Events auf den Markern
@@ -152,6 +150,10 @@ function shuffleArray(array) {
 
 // Generiert eine neue Frage
 function generateQuestion() {
+    nextButton.style.display = 'none'; // Button verstecken/deaktivieren für die neue Frage
+    nextButton.disabled = true;
+    // nextButton.textContent = "Nächste Frage"; // Wird im Timeout oder resetQuiz gesetzt
+
     resetMarkerStyles(); 
     disableMapClicks(false); 
 
@@ -159,18 +161,23 @@ function generateQuestion() {
     
     if (currentQuestionData && currentQuestionData.properties) {
         questionTextContent.textContent = `Klicke auf: ${currentQuestionData.properties.name}`;
+        questionImage.style.display = 'block'; // Bild wieder anzeigen, falls es am Ende versteckt wurde
         if (currentQuestionData.properties.imageUrl) {
             questionImage.src = currentQuestionData.properties.imageUrl;
             questionImage.alt = `Wappen von ${currentQuestionData.properties.name}`;
-            questionImage.style.display = 'block';
         } else {
             questionImage.style.display = 'none'; 
         }
     } else {
-        console.error("Fehler: Ungültige Fragendaten oder fehlende Properties", currentQuestionData);
-        questionTextContent.textContent = "Fehler beim Laden der Frage.";
+        // Dieser Fall sollte eigtl. durch die Logik im Button-Listener abgefangen werden (Quiz Ende)
+        // Aber als Fallback:
+        console.error("Fehler: Ungültige Fragendaten oder keine Fragen mehr übrig.", currentQuestionData);
+        questionTextContent.textContent = "Fehler beim Laden der Frage oder Quiz beendet.";
         questionImage.style.display = 'none';
         currentQuestionData = null; 
+        nextButton.textContent = "Neu starten"; // Fallback, falls hier gelandet wird
+        nextButton.style.display = 'block';
+        nextButton.disabled = false;
     }
 }
 
@@ -189,10 +196,25 @@ function resetQuiz() {
     featuresToAsk = [...allFeaturesData]; 
     shuffleArray(featuresToAsk);
 
+    nextButton.style.display = 'none'; // Button initial verstecken/deaktivieren
+    nextButton.disabled = true;
+    nextButton.textContent = "Nächste Frage"; // Button-Text zurücksetzen
+
     createMarkers(); 
     
     generateQuestion();
 }
+
+// Event-Listener für den "Nächste Frage"/"Neu starten"-Button
+nextButton.addEventListener('click', () => {
+    // currentQuestionData ist null, wenn der Timeout in onMarkerClick abgelaufen ist
+    if (featuresToAsk.length === 0 && currentQuestionData === null) { 
+        resetQuiz();
+    } else {
+        generateQuestion();
+    }
+    // Der Button wird in generateQuestion() oder resetQuiz() wieder versteckt/deaktiviert
+});
 
 // Initialisiert die Anwendung, wenn das DOM geladen ist
 document.addEventListener('DOMContentLoaded', initMap);
