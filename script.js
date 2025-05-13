@@ -91,7 +91,10 @@ function createMarkers() {
 
 // Wird aufgerufen, wenn auf einen Marker geklickt wird
 function onMarkerClick(e) {
-    if (!currentQuestionData) return; // Kein Quiz aktiv oder Frage schon beantwortet
+    if (!currentQuestionData || !currentQuestionData.properties) { // Zusätzliche Prüfung für properties
+        console.warn("onMarkerClick aufgerufen, aber currentQuestionData ist nicht korrekt gesetzt.");
+        return; 
+    }
 
     const clickedMarker = e.target;
     const clickedFeatureName = clickedMarker.featureData.name;
@@ -99,20 +102,20 @@ function onMarkerClick(e) {
     disableMapClicks(true); 
     nextButton.disabled = false;
 
-    if (clickedFeatureName === currentQuestionData.name) {
+    const correctFeatureName = currentQuestionData.properties.name; // Korrekter Zugriff
+
+    if (clickedFeatureName === correctFeatureName) {
         score++;
         scoreDisplay.textContent = `Punkte: ${score}`;
-        questionTextContent.textContent = `Richtig! Das ist ${currentQuestionData.name}.`;
-        clickedMarker.setIcon(correctIcon); // Verwendet jetzt defaultIcon oder das angepasste correctIcon
-        // Optional: Zoom auf korrekten Marker
-        // map.setView(clickedMarker.getLatLng(), 8); 
+        questionTextContent.textContent = `Richtig! Das ist ${correctFeatureName}.`;
+        clickedMarker.setIcon(correctIcon); 
     } else {
-        questionTextContent.textContent = `Falsch. Das war ${clickedFeatureName}. Gesucht war ${currentQuestionData.name}.`;
-        clickedMarker.setIcon(incorrectIcon); // Verwendet jetzt defaultIcon oder das angepasste incorrectIcon
+        questionTextContent.textContent = `Falsch. Das war ${clickedFeatureName}. Gesucht war ${correctFeatureName}.`;
+        clickedMarker.setIcon(incorrectIcon); 
 
         markersLayer.eachLayer(marker => {
-            if (marker.featureData.name === currentQuestionData.name) {
-                marker.setIcon(correctIcon); // Verwendet jetzt defaultIcon oder das angepasste correctIcon
+            if (marker.featureData.name === correctFeatureName) {
+                marker.setIcon(correctIcon); 
             }
         });
     }
@@ -150,7 +153,7 @@ function generateQuestion() {
         questionTextContent.textContent = `Quiz beendet! Endpunktzahl: ${score} von ${allFeaturesData.length}.`;
         questionImage.style.display = 'none';
         nextButton.textContent = "Neu starten";
-        nextButton.disabled = false;
+        nextButton.disabled = false; // Button für Neustart aktivieren
         currentQuestionData = null;
         return;
     }
@@ -158,10 +161,22 @@ function generateQuestion() {
     // Nimm das nächste Element aus dem gemischten Array
     currentQuestionData = featuresToAsk.pop(); 
     
-    questionTextContent.textContent = `Klicke auf: ${currentQuestionData.name}`;
-    questionImage.style.display = 'block';
-    questionImage.src = currentQuestionData.imageUrl;
-    questionImage.alt = `Wappen von ${currentQuestionData.name}`;
+    // Korrekter Zugriff über das 'properties'-Objekt
+    if (currentQuestionData && currentQuestionData.properties) {
+        questionTextContent.textContent = `Klicke auf: ${currentQuestionData.properties.name}`;
+        if (currentQuestionData.properties.imageUrl) {
+            questionImage.src = currentQuestionData.properties.imageUrl;
+            questionImage.alt = `Wappen von ${currentQuestionData.properties.name}`;
+            questionImage.style.display = 'block';
+        } else {
+            questionImage.style.display = 'none'; // Bild ausblenden, wenn keine URL vorhanden
+        }
+    } else {
+        console.error("Fehler: Ungültige Fragendaten oder fehlende Properties", currentQuestionData);
+        questionTextContent.textContent = "Fehler beim Laden der Frage.";
+        questionImage.style.display = 'none';
+        currentQuestionData = null; // Verhindern, dass mit ungültigen Daten weitergemacht wird
+    }
     
     nextButton.textContent = "Nächste Frage";
     nextButton.disabled = true; // Deaktiviere "Nächste Frage" bis eine Antwort gegeben wurde
