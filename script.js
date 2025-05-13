@@ -1,179 +1,204 @@
 let map;
-let geojsonLayer;
+// geojsonLayer wird nicht mehr für die Hauptinteraktion benötigt, aber wir könnten es für die Anzeige der Umrisse behalten
+// let geojsonLayer; 
 let score = 0;
 let currentQuestionData = null; // Speichert das aktuell gesuchte Bundesland-Objekt
 let featuresToAsk = []; // Array der Features, die noch abgefragt werden müssen
 let allFeaturesData = []; // Speichert alle geladenen Features für den Neustart
-
-// Standard-Stil für GeoJSON-Layer
-const defaultStyle = {
-    fillColor: "#3498db",
-    color: "#2c3e50",
-    weight: 1,
-    fillOpacity: 0.5
-};
-
-const correctStyle = {
-    fillColor: "#2ecc71",
-    fillOpacity: 0.7,
-    weight: 2,
-    color: "#27ae60"
-};
-
-const incorrectStyle = {
-    fillColor: "#e74c3c",
-    fillOpacity: 0.7,
-    weight: 2,
-    color: "#c0392b"
-};
+let markersLayer = L.layerGroup(); // Layer-Gruppe für unsere Marker
 
 // HTML-Elemente abrufen
 const questionDisplay = document.getElementById('question-display');
+const questionImage = document.getElementById('question-image');
+const questionTextContent = document.getElementById('question-text-content');
 const scoreDisplay = document.getElementById('score');
 const nextButton = document.getElementById('next-btn');
+
+// Benutzerdefinierte Icons für Marker (optional, aber verbessert das Feedback)
+const defaultIcon = L.icon({
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    // shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', // Oft von Leaflet automatisch gehandhabt
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+// Temporär auskommentiert für Testzwecke
+/*
+const correctIcon = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+const incorrectIcon = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+*/
+
+// Verwende defaultIcon für alle Fälle zu Testzwecken
+const correctIcon = defaultIcon; 
+const incorrectIcon = defaultIcon;
 
 // Initialisiert die Karte
 function initMap() {
     map = L.map('map').setView([51.1657, 10.4515], 6); // Zentrum Deutschland, Zoom 6
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
-    console.log("Map initialized");
+    markersLayer.addTo(map); // Fügt die Marker-Layer-Gruppe zur Karte hinzu
+    loadAndDisplayMarkers();
 }
 
-// Lädt GeoJSON-Daten und fügt sie zur Karte hinzu
-async function loadGeoDataAndStartQuiz() {
+// Lädt die GeoJSON-Daten und erstellt Marker
+async function loadAndDisplayMarkers() {
     try {
         const response = await fetch('geojsonData.json');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        allFeaturesData = JSON.parse(JSON.stringify(data.features)); // Tiefenkopie für Neustart
+        allFeaturesData = data.features; // Speichert alle Features für den Neustart
         
-        resetQuiz(); // Startet das Quiz mit den geladenen Daten
-
+        resetQuiz(); // Startet das Quiz nach dem Laden der Daten
     } catch (error) {
         console.error("Fehler beim Laden der GeoJSON-Daten:", error);
         questionDisplay.textContent = "Fehler beim Laden der Kartendaten.";
     }
 }
 
-function setupGeoJsonLayer() {
-    if (geojsonLayer) {
-        map.removeLayer(geojsonLayer);
-    }
-    geojsonLayer = L.geoJSON({
-        type: "FeatureCollection",
-        features: allFeaturesData
-    }, {
-        style: defaultStyle,
-        onEachFeature: onEachFeature
-    }).addTo(map);
-}
+function createMarkers() {
+    markersLayer.clearLayers(); // Entfernt alte Marker, falls vorhanden
 
-function resetQuiz() {
-    score = 0;
-    scoreDisplay.textContent = `Punkte: ${score}`;
-    featuresToAsk = shuffleArray([...allFeaturesData]); // Neue gemischte Liste für die Runde
-    
-    setupGeoJsonLayer();
-    generateQuestion();
-    nextButton.textContent = "Nächste Frage";
-}
-
-// Wird für jedes Feature (Bundesland) aufgerufen
-function onEachFeature(feature, layer) {
-    layer.on({
-        click: onFeatureClick
+    allFeaturesData.forEach(feature => {
+        if (feature.properties && feature.properties.centroid) {
+            const marker = L.marker(feature.properties.centroid, { icon: defaultIcon });
+            marker.featureData = feature.properties; // Speichert die Daten des Features im Marker
+            marker.on('click', onMarkerClick);
+            markersLayer.addLayer(marker);
+        }
     });
 }
 
-// Behandelt Klicks auf ein Feature
-function onFeatureClick(e) {
-    if (!currentQuestionData || nextButton.disabled === false) return; // Nur reagieren, wenn eine Frage aktiv ist und noch nicht beantwortet wurde
+// Wird aufgerufen, wenn auf einen Marker geklickt wird
+function onMarkerClick(e) {
+    if (!currentQuestionData) return; // Kein Quiz aktiv oder Frage schon beantwortet
 
-    const clickedLayer = e.target;
-    const clickedFeatureName = clickedLayer.feature.properties.name;
-    checkAnswer(clickedFeatureName, clickedLayer);
+    const clickedMarker = e.target;
+    const clickedFeatureName = clickedMarker.featureData.name;
+
+    disableMapClicks(true); 
+    nextButton.disabled = false;
+
+    if (clickedFeatureName === currentQuestionData.name) {
+        score++;
+        scoreDisplay.textContent = `Punkte: ${score}`;
+        questionTextContent.textContent = `Richtig! Das ist ${currentQuestionData.name}.`;
+        clickedMarker.setIcon(correctIcon); // Verwendet jetzt defaultIcon oder das angepasste correctIcon
+        // Optional: Zoom auf korrekten Marker
+        // map.setView(clickedMarker.getLatLng(), 8); 
+    } else {
+        questionTextContent.textContent = `Falsch. Das war ${clickedFeatureName}. Gesucht war ${currentQuestionData.name}.`;
+        clickedMarker.setIcon(incorrectIcon); // Verwendet jetzt defaultIcon oder das angepasste incorrectIcon
+
+        markersLayer.eachLayer(marker => {
+            if (marker.featureData.name === currentQuestionData.name) {
+                marker.setIcon(correctIcon); // Verwendet jetzt defaultIcon oder das angepasste correctIcon
+            }
+        });
+    }
+    currentQuestionData = null; // Verhindert doppeltes Antworten
 }
 
-// Mischt ein Array (Fisher-Yates)
+// (De-)Aktiviert Klick-Events auf den Markern
+function disableMapClicks(disabled) {
+    markersLayer.eachLayer(marker => {
+        if (disabled) {
+            marker.off('click', onMarkerClick);
+        } else {
+            // Stelle sicher, dass der Event-Handler nicht mehrfach hinzugefügt wird
+            marker.off('click', onMarkerClick); // Erst entfernen
+            marker.on('click', onMarkerClick);  // Dann hinzufügen
+        }
+    });
+}
+
+
+// Mischt ein Array (Fisher-Yates Shuffle)
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
     }
-    return array;
 }
 
 // Generiert eine neue Frage
 function generateQuestion() {
-    geojsonLayer.eachLayer(layer => layer.setStyle(defaultStyle).bringToFront()); // Reset style and ensure clickability
-    enableMapClicks(true);
+    resetMarkerStyles(); // Setzt Icons aller Marker zurück
+    disableMapClicks(false); // Aktiviert Klicks auf Marker
 
     if (featuresToAsk.length === 0) {
-        questionDisplay.textContent = `Quiz beendet! Endpunktzahl: ${score}`;
+        questionTextContent.textContent = `Quiz beendet! Endpunktzahl: ${score} von ${allFeaturesData.length}.`;
+        questionImage.style.display = 'none';
         nextButton.textContent = "Neu starten";
         nextButton.disabled = false;
         currentQuestionData = null;
         return;
     }
 
-    currentQuestionData = featuresToAsk.pop();
-    questionDisplay.textContent = `Klicke auf: ${currentQuestionData.properties.name}`;
-    nextButton.disabled = true;
+    // Nimm das nächste Element aus dem gemischten Array
+    currentQuestionData = featuresToAsk.pop(); 
+    
+    questionTextContent.textContent = `Klicke auf: ${currentQuestionData.name}`;
+    questionImage.style.display = 'block';
+    questionImage.src = currentQuestionData.imageUrl;
+    questionImage.alt = `Wappen von ${currentQuestionData.name}`;
+    
+    nextButton.textContent = "Nächste Frage";
+    nextButton.disabled = true; // Deaktiviere "Nächste Frage" bis eine Antwort gegeben wurde
 }
 
-// Überprüft die Antwort
-function checkAnswer(clickedName, clickedLayer) {
-    if (!currentQuestionData) return;
-
-    const correctName = currentQuestionData.properties.name;
-    enableMapClicks(false); // Klicks deaktivieren nach Antwort
-
-    if (clickedName === correctName) {
-        score++;
-        scoreDisplay.textContent = `Punkte: ${score}`;
-        clickedLayer.setStyle(correctStyle).bringToFront();
-        questionDisplay.textContent = `Richtig! Das ist ${correctName}.`;
-    } else {
-        clickedLayer.setStyle(incorrectStyle).bringToFront();
-        geojsonLayer.eachLayer(layer => {
-            if (layer.feature.properties.name === correctName) {
-                layer.setStyle(correctStyle).bringToFront();
-            }
-        });
-        questionDisplay.textContent = `Falsch. Das war ${clickedName}. Gesucht war ${correctName}.`;
-    }
-    currentQuestionData = null; // Frage als beantwortet markieren
-    nextButton.disabled = false;
+// Setzt die Icons aller Marker auf den Standard zurück
+function resetMarkerStyles() {
+    markersLayer.eachLayer(marker => {
+        marker.setIcon(defaultIcon);
+        marker.closePopup(); // Schließt eventuelle Popups
+    });
 }
 
-function enableMapClicks(enable) {
-    if (geojsonLayer) {
-        geojsonLayer.eachLayer(layer => {
-            if (enable) {
-                layer.on('click', onFeatureClick);
-            } else {
-                layer.off('click', onFeatureClick);
-            }
-        });
-    }
+// Startet das Quiz oder eine neue Runde
+function resetQuiz() {
+    score = 0;
+    scoreDisplay.textContent = `Punkte: ${score}`;
+    
+    // Kopiere und mische die Features für die neue Runde
+    featuresToAsk = [...allFeaturesData]; 
+    shuffleArray(featuresToAsk);
+
+    createMarkers(); // Erstellt die Marker basierend auf allFeaturesData
+    
+    generateQuestion();
+    nextButton.textContent = "Nächste Frage";
+    nextButton.disabled = true; 
 }
 
-// Event-Listener für den "Nächste Frage" / "Neu starten"-Button
+// Event-Listener für den "Nächste Frage"/"Neu starten"-Button
 nextButton.addEventListener('click', () => {
-    if (featuresToAsk.length === 0 && !currentQuestionData) { // Quiz war beendet
+    if (featuresToAsk.length === 0 && !currentQuestionData) { // Wenn das Quiz beendet ist
         resetQuiz();
     } else {
         generateQuestion();
     }
 });
 
-// Initialisierung
-document.addEventListener('DOMContentLoaded', () => {
-    initMap();
-    loadGeoDataAndStartQuiz();
-});
+// Initialisiert die Anwendung, wenn das DOM geladen ist
+document.addEventListener('DOMContentLoaded', initMap);
