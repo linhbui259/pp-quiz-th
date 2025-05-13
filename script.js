@@ -19,10 +19,9 @@ const nextButton = document.getElementById('next-btn'); // Button-Variable wiede
 
 // Neue HTML-Elemente für die Info-Anzeige
 const infoDisplayDiv = document.getElementById('info-display');
-const infoCapital = document.getElementById('info-capital');
-const infoPopulation = document.getElementById('info-population');
-const infoArea = document.getElementById('info-area');
-const infoWikiLink = document.getElementById('info-wiki-link');
+const infoCountry = document.getElementById('info-country');
+const infoFaculties = document.getElementById('info-faculties');
+const infoWebsite = document.getElementById('info-website');
 
 // Benutzerdefinierte Icons für Marker (optional, aber verbessert das Feedback)
 const defaultIcon = L.icon({
@@ -160,21 +159,19 @@ function onMapClickHandler(e) {
 function checkAnswer(distanceInMeters, clickedUserMarker, actualTargetMarker) {
     const toleranceRadius = 20000; // 20 km
     const distanceInKm = (distanceInMeters / 1000).toFixed(1);
-    const correctStateProperties = actualTargetMarker.featureData; // Direkter Zugriff auf Properties
+    const correctUniversityProperties = actualTargetMarker.featureData;
 
-    // Zielmarker sichtbar machen und Standard-Icon zurücksetzen (falls er vorher farbig war)
     actualTargetMarker.setOpacity(1);
-    // actualTargetMarker.setIcon(defaultIcon); // Oder ein neutrales "Ziel" Icon
 
     if (distanceInMeters <= toleranceRadius) {
         score++;
-        questionTextContent.textContent = `Richtig! Sehr gut getroffen (${distanceInKm} km). Das ist ${correctStateProperties.name}.`;
+        questionTextContent.textContent = `Richtig! Sehr gut getroffen (${distanceInKm} km). Das ist ${correctUniversityProperties.name}.`;
         clickedUserMarker.setIcon(correctClickIcon);
-        actualTargetMarker.setIcon(targetCorrectIcon); // Korrektes Ziel auch hervorheben
+        actualTargetMarker.setIcon(targetCorrectIcon);
     } else {
-        questionTextContent.textContent = `Daneben! Du warst ${distanceInKm} km von ${correctStateProperties.name} entfernt.`;
+        questionTextContent.textContent = `Daneben! Du warst ${distanceInKm} km von ${correctUniversityProperties.name} entfernt.`;
         clickedUserMarker.setIcon(incorrectClickIcon);
-        actualTargetMarker.setIcon(targetCorrectIcon); // Korrektes Ziel hervorheben
+        actualTargetMarker.setIcon(targetCorrectIcon);
 
         if (distanceLine) map.removeLayer(distanceLine);
         distanceLine = L.polyline([clickedUserMarker.getLatLng(), actualTargetMarker.getLatLng()], { color: '#e74c3c', weight: 3, dashArray: '5, 5' }).addTo(map);
@@ -184,18 +181,19 @@ function checkAnswer(distanceInMeters, clickedUserMarker, actualTargetMarker) {
     }
 
     // Zusätzliche Informationen anzeigen
-    if (correctStateProperties) {
-        infoCapital.textContent = correctStateProperties.capital || 'N/A';
-        infoPopulation.textContent = correctStateProperties.population || 'N/A';
-        infoArea.textContent = correctStateProperties.area || 'N/A';
-        if (correctStateProperties.wiki) {
-            infoWikiLink.href = correctStateProperties.wiki;
-            infoWikiLink.textContent = correctStateProperties.wiki; // Zeigt den Link-Text an
-            infoWikiLink.style.display = 'inline';
+    if (correctUniversityProperties) {
+        infoCountry.textContent = correctUniversityProperties.country || 'N/A';
+        infoFaculties.textContent = Array.isArray(correctUniversityProperties.faculties) 
+            ? correctUniversityProperties.faculties.join(', ') 
+            : 'N/A';
+        if (correctUniversityProperties.website) {
+            infoWebsite.href = correctUniversityProperties.website;
+            infoWebsite.textContent = 'Besuchen';
+            infoWebsite.style.display = 'inline';
         } else {
-            infoWikiLink.style.display = 'none';
+            infoWebsite.style.display = 'none';
         }
-        infoDisplayDiv.style.display = 'block'; // Info-Box anzeigen
+        infoDisplayDiv.style.display = 'block';
     }
 
     setTimeout(() => {

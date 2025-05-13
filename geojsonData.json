@@ -4,65 +4,271 @@
         {
             "type": "Feature",
             "properties": {
-                "name": "Bayern",
-                "imageUrl": "https://images.unsplash.com/photo-1744968776876-283d9ae15eb0?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                "centroid": [48.1351, 11.5820],
-                "capital": "München",
-                "population": "13,1 Mio.",
-                "area": "70.550 km²",
-                "infoLink": "https://de.wikipedia.org/wiki/Bayern"
+                "name": "University of Applied Sciences Utrecht",
+                "country": "Netherlands",
+                "city": "Utrecht",
+                "type": "University of Applied Sciences",
+                "faculties": [
+                    "Angewandte Naturwissenschaften",
+                    "Informatik und Ingenieurwissenschaften",
+                    "Wirtschafts- und Rechtswissenschaften"
+                ],
+                "exchangePrograms": [
+                    {
+                        "type": "Erasmus+",
+                        "duration": "Semester",
+                        "availableFor": ["Bachelor", "Master"]
+                    }
+                ],
+                "website": "https://www.hu.nl/",
+                "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop",
+                "centroid": [52.0907, 5.1214],
+                "language": ["English", "Dutch"],
+                "semesterDates": {
+                    "winter": "September - January",
+                    "summer": "February - July"
+                }
             },
             "geometry": {
-                "type": "Polygon",
-                "coordinates": [[ [10.0, 47.5], [13.8, 47.5], [13.8, 50.5], [10.0, 50.5], [10.0, 47.5] ]]
+                "type": "Point",
+                "coordinates": [5.1214, 52.0907]
             }
         },
         {
             "type": "Feature",
             "properties": {
-                "name": "Berlin",
-                "capital": "Berlin",
-                "population": "3,7 Mio.",
-                "area": "891,8 km²",
-                "wiki": "https://de.wikipedia.org/wiki/Berlin",
-                "imageUrl": "https://images.unsplash.com/photo-1744968776876-283d9ae15eb0?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                "centroid": [52.520008, 13.404954]
+                "name": "University of Strathclyde",
+                "country": "United Kingdom",
+                "city": "Glasgow",
+                "type": "Research University",
+                "faculties": [
+                    "Architektur",
+                    "Bauingenieurwesen und Umwelttechnik",
+                    "Wirtschafts- und Rechtswissenschaften"
+                ],
+                "exchangePrograms": [
+                    {
+                        "type": "Bilateral Agreement",
+                        "duration": "Semester",
+                        "availableFor": ["Bachelor", "Master"]
+                    }
+                ],
+                "website": "https://www.strath.ac.uk/",
+                "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop",
+                "centroid": [55.8617, -4.2583],
+                "language": ["English"],
+                "semesterDates": {
+                    "winter": "September - December",
+                    "summer": "January - May"
+                }
             },
             "geometry": {
-                "type": "Polygon",
-                "coordinates": [[ [13.0, 52.3], [13.7, 52.3], [13.7, 52.8], [13.0, 52.8], [13.0, 52.3] ]]
+                "type": "Point",
+                "coordinates": [-4.2583, 55.8617]
             }
         },
         {
             "type": "Feature",
             "properties": {
-                "name": "Niedersachsen",
-                "capital": "Hannover",
-                "population": "8,1 Mio.",
-                "area": "47.710 km²",
-                "wiki": "https://de.wikipedia.org/wiki/Niedersachsen",
-                "imageUrl": "https://images.unsplash.com/photo-1744968776876-283d9ae15eb0?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                "centroid": [52.75611, 9.39306]
+                "name": "University of Applied Sciences and Arts Northwestern Switzerland",
+                "country": "Switzerland",
+                "city": "Windisch",
+                "type": "University of Applied Sciences",
+                "faculties": [
+                    "Informatik und Ingenieurwissenschaften",
+                    "Informations-, Medien- und Elektrotechnik"
+                ],
+                "exchangePrograms": [
+                    {
+                        "type": "Bilateral Agreement",
+                        "duration": "Semester",
+                        "availableFor": ["Bachelor", "Master"]
+                    }
+                ],
+                "website": "https://www.fhnw.ch/",
+                "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop",
+                "centroid": [47.4784, 8.2122],
+                "language": ["German", "English"],
+                "semesterDates": {
+                    "winter": "September - February",
+                    "summer": "February - July"
+                }
             },
             "geometry": {
-                "type": "Polygon",
-                "coordinates": [[ [8.0, 51.5], [11.5, 51.5], [11.5, 53.8], [8.0, 53.8], [8.0, 51.5] ]]
+                "type": "Point",
+                "coordinates": [8.2122, 47.4784]
             }
         },
         {
             "type": "Feature",
             "properties": {
-                "name": "Hessen",
-                "capital": "Wiesbaden",
-                "population": "6,4 Mio.",
-                "area": "21.115 km²",
-                "wiki": "https://de.wikipedia.org/wiki/Hessen",
-                "imageUrl": "https://images.unsplash.com/photo-1744968776876-283d9ae15eb0?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                "centroid": [50.1109, 8.6821]
+                "name": "University of Applied Sciences Upper Austria",
+                "country": "Austria",
+                "city": "Hagenberg",
+                "type": "University of Applied Sciences",
+                "programs": "Computer Science, Engineering, Media Technology",
+                "website": "https://www.fh-ooe.at/",
+                "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop",
+                "centroid": [48.3670, 14.5167],
+                "partnershipType": "Erasmus+",
+                "exchangePrograms": "Student Exchange, Staff Mobility",
+                "language": "German, English"
             },
             "geometry": {
-                "type": "Polygon",
-                "coordinates": [[ [7.5, 49.5], [10.0, 49.5], [10.0, 51.5], [7.5, 51.5], [7.5, 49.5] ]]
+                "type": "Point",
+                "coordinates": [14.5167, 48.3670]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Aalto University",
+                "country": "Finland",
+                "city": "Espoo",
+                "type": "Research University",
+                "programs": "Engineering, Design, Business",
+                "website": "https://www.aalto.fi/",
+                "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop",
+                "centroid": [60.1865, 24.8207],
+                "partnershipType": "Strategic Partner",
+                "exchangePrograms": "Student Exchange, Research Collaboration",
+                "language": "Finnish, English"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [24.8207, 60.1865]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "National Taiwan University of Science and Technology",
+                "country": "Taiwan",
+                "city": "Taipei",
+                "type": "Technical University",
+                "faculties": [
+                    "Informatik und Ingenieurwissenschaften",
+                    "Informations-, Medien- und Elektrotechnik",
+                    "Wirtschafts- und Rechtswissenschaften"
+                ],
+                "exchangePrograms": [
+                    {
+                        "type": "Bilateral Agreement",
+                        "duration": "Semester",
+                        "availableFor": ["Bachelor", "Master"]
+                    }
+                ],
+                "website": "https://www.ntust.edu.tw/",
+                "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop",
+                "centroid": [25.0130, 121.5397],
+                "language": ["Chinese", "English"],
+                "semesterDates": {
+                    "winter": "September - January",
+                    "summer": "February - June"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [121.5397, 25.0130]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Seoul National University of Science and Technology",
+                "country": "South Korea",
+                "city": "Seoul",
+                "type": "Technical University",
+                "faculties": [
+                    "Informatik und Ingenieurwissenschaften",
+                    "Anlagen, Energie- und Maschinensysteme",
+                    "Wirtschafts- und Rechtswissenschaften"
+                ],
+                "exchangePrograms": [
+                    {
+                        "type": "Bilateral Agreement",
+                        "duration": "Semester",
+                        "availableFor": ["Bachelor", "Master"]
+                    }
+                ],
+                "website": "https://www.seoultech.ac.kr/",
+                "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop",
+                "centroid": [37.5665, 126.9780],
+                "language": ["Korean", "English"],
+                "semesterDates": {
+                    "winter": "March - June",
+                    "summer": "September - December"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [126.9780, 37.5665]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Tokyo University of Technology",
+                "country": "Japan",
+                "city": "Tokyo",
+                "type": "Technical University",
+                "faculties": [
+                    "Informatik und Ingenieurwissenschaften",
+                    "Informations-, Medien- und Elektrotechnik",
+                    "Angewandte Naturwissenschaften"
+                ],
+                "exchangePrograms": [
+                    {
+                        "type": "Bilateral Agreement",
+                        "duration": "Semester",
+                        "availableFor": ["Bachelor", "Master"]
+                    }
+                ],
+                "website": "https://www.teu.ac.jp/",
+                "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop",
+                "centroid": [35.6895, 139.6917],
+                "language": ["Japanese", "English"],
+                "semesterDates": {
+                    "winter": "April - July",
+                    "summer": "October - February"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [139.6917, 35.6895]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "National University of Singapore",
+                "country": "Singapore",
+                "city": "Singapore",
+                "type": "Research University",
+                "faculties": [
+                    "Informatik und Ingenieurwissenschaften",
+                    "Wirtschafts- und Rechtswissenschaften",
+                    "Angewandte Naturwissenschaften"
+                ],
+                "exchangePrograms": [
+                    {
+                        "type": "Bilateral Agreement",
+                        "duration": "Semester",
+                        "availableFor": ["Bachelor", "Master"]
+                    }
+                ],
+                "website": "https://www.nus.edu.sg/",
+                "imageUrl": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop",
+                "centroid": [1.3521, 103.8198],
+                "language": ["English"],
+                "semesterDates": {
+                    "winter": "August - December",
+                    "summer": "January - May"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [103.8198, 1.3521]
             }
         }
     ]
