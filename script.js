@@ -17,6 +17,13 @@ const questionImage = document.getElementById('question-image');
 const questionTextContent = document.getElementById('question-text-content');
 const nextButton = document.getElementById('next-btn'); // Button-Variable wiederhergestellt
 
+// Neue HTML-Elemente für die Info-Anzeige
+const infoDisplayDiv = document.getElementById('info-display');
+const infoCapital = document.getElementById('info-capital');
+const infoPopulation = document.getElementById('info-population');
+const infoArea = document.getElementById('info-area');
+const infoWikiLink = document.getElementById('info-wiki-link');
+
 // Benutzerdefinierte Icons für Marker (optional, aber verbessert das Feedback)
 const defaultIcon = L.icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -153,7 +160,7 @@ function onMapClickHandler(e) {
 function checkAnswer(distanceInMeters, clickedUserMarker, actualTargetMarker) {
     const toleranceRadius = 20000; // 20 km
     const distanceInKm = (distanceInMeters / 1000).toFixed(1);
-    const correctStateName = actualTargetMarker.featureData.name;
+    const correctStateProperties = actualTargetMarker.featureData; // Direkter Zugriff auf Properties
 
     // Zielmarker sichtbar machen und Standard-Icon zurücksetzen (falls er vorher farbig war)
     actualTargetMarker.setOpacity(1);
@@ -161,20 +168,34 @@ function checkAnswer(distanceInMeters, clickedUserMarker, actualTargetMarker) {
 
     if (distanceInMeters <= toleranceRadius) {
         score++;
-        questionTextContent.textContent = `Richtig! Sehr gut getroffen (${distanceInKm} km). Das ist ${correctStateName}.`;
+        questionTextContent.textContent = `Richtig! Sehr gut getroffen (${distanceInKm} km). Das ist ${correctStateProperties.name}.`;
         clickedUserMarker.setIcon(correctClickIcon);
         actualTargetMarker.setIcon(targetCorrectIcon); // Korrektes Ziel auch hervorheben
     } else {
-        questionTextContent.textContent = `Daneben! Du warst ${distanceInKm} km von ${correctStateName} entfernt.`;
+        questionTextContent.textContent = `Daneben! Du warst ${distanceInKm} km von ${correctStateProperties.name} entfernt.`;
         clickedUserMarker.setIcon(incorrectClickIcon);
         actualTargetMarker.setIcon(targetCorrectIcon); // Korrektes Ziel hervorheben
 
         if (distanceLine) map.removeLayer(distanceLine);
         distanceLine = L.polyline([clickedUserMarker.getLatLng(), actualTargetMarker.getLatLng()], { color: '#e74c3c', weight: 3, dashArray: '5, 5' }).addTo(map);
         
-        // Zoom, um Klick und Ziel anzuzeigen
         const bounds = L.latLngBounds(clickedUserMarker.getLatLng(), actualTargetMarker.getLatLng());
-        map.fitBounds(bounds.pad(0.2)); // Etwas Padding um die Linie
+        map.fitBounds(bounds.pad(0.2)); 
+    }
+
+    // Zusätzliche Informationen anzeigen
+    if (correctStateProperties) {
+        infoCapital.textContent = correctStateProperties.capital || 'N/A';
+        infoPopulation.textContent = correctStateProperties.population || 'N/A';
+        infoArea.textContent = correctStateProperties.area || 'N/A';
+        if (correctStateProperties.wiki) {
+            infoWikiLink.href = correctStateProperties.wiki;
+            infoWikiLink.textContent = correctStateProperties.wiki; // Zeigt den Link-Text an
+            infoWikiLink.style.display = 'inline';
+        } else {
+            infoWikiLink.style.display = 'none';
+        }
+        infoDisplayDiv.style.display = 'block'; // Info-Box anzeigen
     }
 
     setTimeout(() => {
@@ -222,6 +243,11 @@ function generateQuestion() {
 
     if (userClickMarker) map.removeLayer(userClickMarker);
     if (distanceLine) map.removeLayer(distanceLine);
+
+    // Info-Anzeige ausblenden
+    if (infoDisplayDiv) {
+        infoDisplayDiv.style.display = 'none';
+    }
 
     // Zielmarker zurücksetzen (unsichtbar/dezent machen und Standard-Icon)
     targetMarkersLayer.eachLayer(marker => {
@@ -286,6 +312,11 @@ function resetQuiz() {
     // createMarkers(); // Umbenannt zu createTargetMarkers und wird nur einmal in loadAndDisplayData aufgerufen
     resetMarkerStyles(); // Stellt sicher, dass alles sauber ist
     generateQuestion();
+
+    // Info-Anzeige ausblenden beim Reset
+    if (infoDisplayDiv) {
+        infoDisplayDiv.style.display = 'none';
+    }
 }
 
 // Event-Listener für den "Nächste Frage"/"Neu starten"-Button
