@@ -6,6 +6,10 @@ let currentQuestionData = null; // Speichert das aktuell gesuchte Bundesland-Obj
 let featuresToAsk = []; // Array der Features, die noch abgefragt werden müssen
 let allFeaturesData = []; // Speichert alle geladenen Features für den Neustart
 let markersLayer = L.layerGroup(); // Layer-Gruppe für unsere Marker
+let targetMarkersLayer = L.layerGroup(); // explizit für Zielmarker
+let userClickMarker = null; // Für den Klick des Benutzers
+let distanceLine = null; // Für die Distanzlinie
+let mapClicksDisabled = true; // Startet deaktiviert, bis Quiz geladen ist
 
 // HTML-Elemente abrufen
 const questionDisplay = document.getElementById('question-display');
@@ -42,6 +46,31 @@ const incorrectIcon = L.icon({
     shadowSize: [41, 41]
 });
 
+// Icons
+const userPlacedIcon = L.icon({ // Gelb für den Klick des Nutzers
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
+
+const correctClickIcon = L.icon({ // Grün für korrekten Klick des Nutzers
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
+
+const incorrectClickIcon = L.icon({ // Rot für falschen Klick des Nutzers
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
+
+const targetCorrectIcon = L.icon({ // Grün zur Hervorhebung des korrekten Ziels
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', // Oder ein anderes Grün/Blau
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
+
 // Initialisiert die Karte
 function initMap() {
     map = L.map('map').setView([51.1657, 10.4515], 6); // Zentrum Deutschland, Zoom 6
@@ -49,11 +78,13 @@ function initMap() {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
     markersLayer.addTo(map); // Fügt die Marker-Layer-Gruppe zur Karte hinzu
-    loadAndDisplayMarkers();
+    targetMarkersLayer.addTo(map); // Layer für Zielmarker
+    map.on('click', onMapClickHandler); // Neuer Handler für allgemeine Kartenklicks
+    loadAndDisplayData();
 }
 
 // Lädt die GeoJSON-Daten und erstellt Marker
-async function loadAndDisplayMarkers() {
+async function loadAndDisplayData() {
     try {
         const response = await fetch('geojsonData.json');
         if (!response.ok) {
@@ -62,73 +93,107 @@ async function loadAndDisplayMarkers() {
         const data = await response.json();
         allFeaturesData = data.features; // Speichert alle Features für den Neustart
         
-        resetQuiz(); // Startet das Quiz nach dem Laden der Daten
+        createTargetMarkers(); // Zielmarker einmalig erstellen
+        resetQuiz();
     } catch (error) {
         console.error("Fehler beim Laden der GeoJSON-Daten:", error);
         questionTextContent.textContent = "Fehler beim Laden der Kartendaten."; 
     }
 }
 
-function createMarkers() {
-    markersLayer.clearLayers(); // Entfernt alte Marker, falls vorhanden
-
+function createTargetMarkers() {
+    targetMarkersLayer.clearLayers();
     allFeaturesData.forEach(feature => {
         if (feature.properties && feature.properties.centroid) {
-            const marker = L.marker(feature.properties.centroid, { icon: defaultIcon });
-            marker.featureData = feature.properties; // Speichert die Daten des Features im Marker
-            marker.on('click', onMarkerClick);
-            markersLayer.addLayer(marker);
+            const marker = L.marker(feature.properties.centroid, { 
+                icon: defaultIcon, 
+                opacity: 0.0, // Starten unsichtbar oder sehr dezent
+                interactive: false // Nicht direkt klickbar machen, Klick auf Karte zählt
+            }); 
+            marker.featureData = feature.properties; 
+            targetMarkersLayer.addLayer(marker);
         }
     });
 }
 
-// Wird aufgerufen, wenn auf einen Marker geklickt wird
-function onMarkerClick(e) {
-    if (!currentQuestionData || !currentQuestionData.properties) { 
-        console.warn("onMarkerClick aufgerufen, aber currentQuestionData ist nicht korrekt gesetzt oder nächste Frage wird bereits geladen.");
-        return; 
+// Handler für Klicks auf die Karte
+function onMapClickHandler(e) {
+    if (mapClicksDisabled || !currentQuestionData || !currentQuestionData.properties) {
+        console.warn("Map click ignored: Clicks disabled or no active question.");
+        return;
     }
 
-    nextButton.style.display = 'none'; // Button sofort verstecken/deaktivieren
+    mapClicksDisabled = true; // Klicks für diese Antwort deaktivieren
+    nextButton.style.display = 'none';
     nextButton.disabled = true;
 
-    const clickedMarker = e.target;
-    const clickedFeatureName = clickedMarker.featureData.name;
+    if (userClickMarker) map.removeLayer(userClickMarker);
+    if (distanceLine) map.removeLayer(distanceLine);
 
-    disableMapClicks(true); 
-    
-    const correctFeatureName = currentQuestionData.properties.name; 
+    userClickMarker = L.marker(e.latlng, { icon: userPlacedIcon, zIndexOffset: 1000 }).addTo(map);
 
-    if (clickedFeatureName === correctFeatureName) {
-        score++;
-        questionTextContent.textContent = `Richtig! Das ist ${correctFeatureName}.`;
-        clickedMarker.setIcon(correctIcon); 
-    } else {
-        questionTextContent.textContent = `Falsch. Das war ${clickedFeatureName}. Gesucht war ${correctFeatureName}.`;
-        clickedMarker.setIcon(incorrectIcon); 
+    const correctStateName = currentQuestionData.properties.name;
+    let correctTargetMarker = null;
+    targetMarkersLayer.eachLayer(marker => {
+        if (marker.featureData.name === correctStateName) {
+            correctTargetMarker = marker;
+        }
+    });
 
-        markersLayer.eachLayer(marker => {
-            if (marker.featureData.name === correctFeatureName) {
-                marker.setIcon(correctIcon); 
-            }
-        });
+    if (!correctTargetMarker) {
+        console.error("Konnte den Zielmarker für", correctStateName, "nicht finden.");
+        mapClicksDisabled = false; // Fehler, Klicks wieder erlauben
+        return;
     }
-    
+
+    const distanceInMeters = e.latlng.distanceTo(correctTargetMarker.getLatLng());
+    checkAnswer(distanceInMeters, userClickMarker, correctTargetMarker);
+}
+
+function checkAnswer(distanceInMeters, clickedUserMarker, actualTargetMarker) {
+    const toleranceRadius = 20000; // 20 km
+    const distanceInKm = (distanceInMeters / 1000).toFixed(1);
+    const correctStateName = actualTargetMarker.featureData.name;
+
+    // Zielmarker sichtbar machen und Standard-Icon zurücksetzen (falls er vorher farbig war)
+    actualTargetMarker.setOpacity(1);
+    // actualTargetMarker.setIcon(defaultIcon); // Oder ein neutrales "Ziel" Icon
+
+    if (distanceInMeters <= toleranceRadius) {
+        score++;
+        questionTextContent.textContent = `Richtig! Sehr gut getroffen (${distanceInKm} km). Das ist ${correctStateName}.`;
+        clickedUserMarker.setIcon(correctClickIcon);
+        actualTargetMarker.setIcon(targetCorrectIcon); // Korrektes Ziel auch hervorheben
+    } else {
+        questionTextContent.textContent = `Daneben! Du warst ${distanceInKm} km von ${correctStateName} entfernt.`;
+        clickedUserMarker.setIcon(incorrectClickIcon);
+        actualTargetMarker.setIcon(targetCorrectIcon); // Korrektes Ziel hervorheben
+
+        if (distanceLine) map.removeLayer(distanceLine);
+        distanceLine = L.polyline([clickedUserMarker.getLatLng(), actualTargetMarker.getLatLng()], { color: '#e74c3c', weight: 3, dashArray: '5, 5' }).addTo(map);
+        
+        // Zoom, um Klick und Ziel anzuzeigen
+        const bounds = L.latLngBounds(clickedUserMarker.getLatLng(), actualTargetMarker.getLatLng());
+        map.fitBounds(bounds.pad(0.2)); // Etwas Padding um die Linie
+    }
+
     setTimeout(() => {
         nextButton.style.display = 'block';
         nextButton.disabled = false;
-        if (featuresToAsk.length === 0) { // Dies war die letzte Frage
-            questionTextContent.textContent += ` | Endpunktzahl: ${score} von ${allFeaturesData.length}.`;
+        if (featuresToAsk.length === 0) {
+            questionTextContent.textContent += ` | Quiz beendet! Endpunktzahl: ${score} von ${allFeaturesData.length}.`;
             questionImage.style.display = 'none';
             nextButton.textContent = "Neu starten";
         } else {
             nextButton.textContent = "Nächste Frage";
         }
-        currentQuestionData = null; // Signalisiert, dass die Antwortverarbeitung abgeschlossen ist
+        currentQuestionData = null; 
     }, 5000);
 }
 
-// (De-)Aktiviert Klick-Events auf den Markern
+// (De-)Aktiviert Klick-Events auf den Markern (jetzt auf der Karte)
+// Diese Funktion ist nicht mehr nötig, da wir mapClicksDisabled verwenden.
+/*
 function disableMapClicks(disabled) {
     markersLayer.eachLayer(marker => {
         if (disabled) {
@@ -139,6 +204,7 @@ function disableMapClicks(disabled) {
         }
     });
 }
+*/
 
 // Mischt ein Array (Fisher-Yates Shuffle)
 function shuffleArray(array) {
@@ -150,18 +216,27 @@ function shuffleArray(array) {
 
 // Generiert eine neue Frage
 function generateQuestion() {
-    nextButton.style.display = 'none'; // Button verstecken/deaktivieren für die neue Frage
+    mapClicksDisabled = false; // Klicks für neue Frage erlauben
+    nextButton.style.display = 'none';
     nextButton.disabled = true;
-    // nextButton.textContent = "Nächste Frage"; // Wird im Timeout oder resetQuiz gesetzt
 
-    resetMarkerStyles(); 
-    disableMapClicks(false); 
+    if (userClickMarker) map.removeLayer(userClickMarker);
+    if (distanceLine) map.removeLayer(distanceLine);
+
+    // Zielmarker zurücksetzen (unsichtbar/dezent machen und Standard-Icon)
+    targetMarkersLayer.eachLayer(marker => {
+        marker.setIcon(defaultIcon);
+        marker.setOpacity(0.0); // Wieder unsichtbar/dezent machen
+    });
+
+    resetMarkerStyles(); // Diese Funktion könnte jetzt in die obige Logik integriert werden.
+    // disableMapClicks(false); // Ersetzt durch mapClicksDisabled
 
     currentQuestionData = featuresToAsk.pop(); 
     
     if (currentQuestionData && currentQuestionData.properties) {
-        questionTextContent.textContent = `Klicke auf: ${currentQuestionData.properties.name}`;
-        questionImage.style.display = 'block'; // Bild wieder anzeigen, falls es am Ende versteckt wurde
+        questionTextContent.textContent = `Klicke auf die Karte für: ${currentQuestionData.properties.name}`;
+        questionImage.style.display = 'block';
         if (currentQuestionData.properties.imageUrl) {
             questionImage.src = currentQuestionData.properties.imageUrl;
             questionImage.alt = `Wappen von ${currentQuestionData.properties.name}`;
@@ -169,24 +244,32 @@ function generateQuestion() {
             questionImage.style.display = 'none'; 
         }
     } else {
-        // Dieser Fall sollte eigtl. durch die Logik im Button-Listener abgefangen werden (Quiz Ende)
-        // Aber als Fallback:
-        console.error("Fehler: Ungültige Fragendaten oder keine Fragen mehr übrig.", currentQuestionData);
-        questionTextContent.textContent = "Fehler beim Laden der Frage oder Quiz beendet.";
+        // Sollte durch Button-Logik am Ende des Quiz abgefangen werden
+        console.error("Fallback: Keine Fragen mehr oder Fehler.");
+        questionTextContent.textContent = "Quiz beendet oder Fehler.";
         questionImage.style.display = 'none';
-        currentQuestionData = null; 
-        nextButton.textContent = "Neu starten"; // Fallback, falls hier gelandet wird
+        nextButton.textContent = "Neu starten";
         nextButton.style.display = 'block';
         nextButton.disabled = false;
+        mapClicksDisabled = true; // Keine weiteren Klicks bis Neustart
     }
 }
 
-// Setzt die Icons aller Marker auf den Standard zurück
+// Setzt die Icons aller Marker auf den Standard zurück (jetzt für targetMarkersLayer)
 function resetMarkerStyles() {
-    markersLayer.eachLayer(marker => {
+    targetMarkersLayer.eachLayer(marker => {
         marker.setIcon(defaultIcon);
+        marker.setOpacity(0.0); // Zielmarker standardmäßig unsichtbar/dezent
         marker.closePopup(); 
     });
+    if (userClickMarker) { // Auch den User-Klick-Marker entfernen
+        map.removeLayer(userClickMarker);
+        userClickMarker = null;
+    }
+    if (distanceLine) { // Auch die Distanzlinie entfernen
+        map.removeLayer(distanceLine);
+        distanceLine = null;
+    }
 }
 
 // Startet das Quiz oder eine neue Runde
@@ -200,20 +283,22 @@ function resetQuiz() {
     nextButton.disabled = true;
     nextButton.textContent = "Nächste Frage"; // Button-Text zurücksetzen
 
-    createMarkers(); 
-    
+    // createMarkers(); // Umbenannt zu createTargetMarkers und wird nur einmal in loadAndDisplayData aufgerufen
+    resetMarkerStyles(); // Stellt sicher, dass alles sauber ist
     generateQuestion();
 }
 
 // Event-Listener für den "Nächste Frage"/"Neu starten"-Button
 nextButton.addEventListener('click', () => {
-    // currentQuestionData ist null, wenn der Timeout in onMarkerClick abgelaufen ist
     if (featuresToAsk.length === 0 && currentQuestionData === null) { 
         resetQuiz();
+    } else if (currentQuestionData === null) { // Antwort wurde angezeigt, Button geklickt
+      generateQuestion();
     } else {
-        generateQuestion();
+      // Sollte nicht passieren, aber als Sicherheitsnetz, falls Button aktiv ist während eine Frage unbeantwortet ist.
+      console.warn("Next button clicked while question active. Generating new question.");
+      generateQuestion();
     }
-    // Der Button wird in generateQuestion() oder resetQuiz() wieder versteckt/deaktiviert
 });
 
 // Initialisiert die Anwendung, wenn das DOM geladen ist
